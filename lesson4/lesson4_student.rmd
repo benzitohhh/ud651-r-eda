@@ -12,6 +12,24 @@ Notes:
 Notes:
 
 ```{r Scatterplots}
+# load data
+setwd('~/Desktop/ud651-r-eda/lesson3/')
+pf <- read.csv('pseudo_facebook.tsv', sep = '\t')
+
+# load ggplot2
+library(ggplot2)
+
+# plot scatter
+qplot(x = age, y = friend_count, data = pf)
+
+# plot scatter (using ggplot syntax)
+ggplot(aes(x = age, y = friend_count), data = pf) + 
+  geom_point() +
+  xlim(13,90)
+
+summary(pf$age)
+
+#
 
 ```
 
@@ -32,10 +50,16 @@ Notes:
 ***
 
 ### Overplotting
-Notes:
+Notes: To reduce overplotting, set alpha
 
 ```{r Overplotting}
+ggplot(aes(x = age, y = friend_count), data = pf) + 
+  geom_point(alpha = 1/20) +
+  xlim(13,90)
 
+ggplot(aes(x = age, y = friend_count), data = pf) + 
+  geom_jitter(alpha = 1/20) + # jitter adds some noise to each age
+  xlim(13,90)
 ```
 
 #### What do you notice in the plot?
@@ -47,7 +71,10 @@ Response:
 Notes:
 
 ```{r Coord_trans()}
-
+ggplot(aes(x = age, y = friend_count), data = pf) + 
+  geom_point(alpha = 1/20) +
+  coord_trans(y = "sqrt") +
+  xlim(13,90)
 ```
 
 #### Look up the documentation for coord_trans() and add a layer to the plot that transforms friend_count using the square root function. Create your plot!
@@ -64,7 +91,11 @@ Notes:
 Notes:
 
 ```{r Alpha and Jitter}
-
+# friendships initiated vs age
+ggplot(aes(x = age, y = friendships_initiated), data = pf) + 
+  geom_point(alpha = 1/20)
+  #coord_trans(y = "sqrt") +
+  #xlim(13,90)
 ```
 
 ***
@@ -78,12 +109,34 @@ Notes:
 Notes:
 
 ```{r Conditional Means}
+install.packages('dplyr')
+library('dplyr')
 
+age_groups <- group_by(pf, age)
+
+pf.fc_by_age <- summarise(age_groups,
+                  friend_count_mean = mean(friend_count),
+                  friend_count_median = median(friend_count),
+                  n = n())
+
+pf.fc_by_age <- arrange(pf.fc_by_age, age)
+
+# alternative syntax, using function chaining
+
+pf.fc_by_age <- pf %.%
+  group_by(age) %.%
+  summarise(friend_count_mean = mean(friend_count),
+            friend_count_median = median(friend_count),
+            n = n()) %.%
+  arrange(age)
 ```
 
 Create your plot!
 
 ```{r Conditional Means Plot}
+
+ggplot(aes(x = age, y = friend_count_median), data = pf.fc_by_age) +
+  geom_line()
 
 ```
 
@@ -93,6 +146,28 @@ Create your plot!
 Notes:
 
 ```{r Overlaying Summaries with Raw Data}
+ggplot(aes(x = age, y = friend_count), data = pf) + 
+  xlim(13,90) +
+  geom_point(alpha = 1/20,
+             position = position_jitter(h=0),
+             color = 'orange') +
+  coord_trans(y = 'sqrt') +
+  geom_line(stat = 'summary', fun.y = mean)
+
+ggplot(aes(x = age, y = friend_count), data = pf) + 
+  coord_cartesian(xlim = c(13,90)) +
+  geom_point(alpha = 1/20,
+             position = position_jitter(h=0),
+             color = 'orange') +
+  coord_trans(y = 'sqrt') +
+  geom_line(stat = 'summary', fun.y = mean) +
+  geom_line(stat = 'summary', fun.y = quantile, probs = .1,
+            linetype = 2, color = 'blue') +
+  geom_line(stat = 'summary', fun.y = quantile, probs = .5,
+            linetype = 1, color = 'blue') +
+  geom_line(stat = 'summary', fun.y = quantile, probs = .9,
+            linetype = 2, color = 'blue')
+
 
 ```
 
@@ -126,7 +201,7 @@ Response:
 Notes:
 
 ```{r Correlation on Subsets}
-with(                 , cor.test(age, friend_count))
+with(subset(pf, age <= 70), cor.test(age, friend_count))
 ```
 
 ***
@@ -140,6 +215,20 @@ Notes:
 Notes:
 
 ```{r}
+ggplot(aes(x = www_likes_received, y = likes_received), data = pf) + 
+  geom_point() +
+  xlim(0, quantile(pf$www_likes_received, 0.95)) +
+  ylim(0, quantile(pf$likes_received, 0.95))
+  #coord_trans(y = 'sqrt', x = 'sqrt') +
+  #geom_line(stat = 'summary', fun.y = mean)
+  #geom_line(stat = 'summary', fun.y = quantile, probs = .1,
+  #          linetype = 2, color = 'blue') +
+  #geom_line(stat = 'summary', fun.y = quantile, probs = .5,
+  #          linetype = 1, color = 'blue') +
+  #geom_line(stat = 'summary', fun.y = quantile, probs = .9,
+  #          linetype = 2, color = 'blue')
+  
+  
 
 ```
 
@@ -178,7 +267,8 @@ library(alr3)
 Create your plot!
 
 ```{r Temp vs Month}
-
+ggplot(aes(x = Month, y = Temp), data = Mitchell) + 
+  geom_point()
 ```
 
 ***
@@ -190,6 +280,8 @@ b. What is the actual correlation of the two variables?
 (Round to the thousandths place)
 
 ```{r Noisy Scatterplots}
+
+with(Mitchell, cor.test(Month, Temp))
 
 ```
 
@@ -218,7 +310,9 @@ Notes:
 Notes:
 
 ```{r Understanding Noise: Age to Age Months}
-
+ggplot(aes(x = Month, y = Temp), data = Mitchell) + 
+  geom_point() +
+  scale_x_discrete(breaks = seq(0, 203, 12))
 ```
 
 ***
@@ -226,11 +320,54 @@ Notes:
 ### Age with Months Means
 
 ```{r Age with Months Means}
-
+pf$age_with_months <- pf $age + (12 - pf$dob_month) /12
 ```
 
 Programming Assignment
 ```{r Programming Assignment}
+
+install.packages('dplyr')
+library('dplyr')
+
+pf.fc_by_age_months <- pf %.%
+  group_by(age_with_months) %.%
+  summarise(friend_count_mean = mean(friend_count),
+            friend_count_median = median(friend_count),
+            n = n()) %.%
+  arrange(age_with_months)
+
+ggplot(aes(x = age_with_months, y = friend_count_median), data = pf.fc_by_age_months) +
+  geom_line()
+
+ggplot(aes(x = age_with_months,
+           y = friend_count_mean),
+       data = subset(pf.fc_by_age_months, pf.fc_by_age_months$age <= 71)) +
+  geom_line()
+
+
+
+# show together
+
+# extra noisey (smaller bins)
+p1 <- ggplot(aes(x = age_with_months,
+           y = friend_count_mean),
+       data = subset(pf.fc_by_age_months, pf.fc_by_age_months$age < 71)) +
+  geom_line()
+
+# original
+p2 <- ggplot(aes(x = age,
+                 y = friend_count_mean),
+       data = subset(pf.fc_by_age, pf.fc_by_age$age < 71)) +
+  geom_line()
+
+# extra smooth (wider bins - rounded to nearest 5)
+p3 <- ggplot(aes(x = round(age / 5) * 5,
+                 y = friend_count),
+       data = subset(pf, age < 71)) +
+  geom_line(stat = 'summary', fun.y = mean)
+
+library(gridExtra)
+grid.arrange(p2, p1, p3, ncol=1)
 
 ```
 
@@ -248,7 +385,28 @@ Programming Assignment
 Notes:
 
 ```{r Smoothing Conditional Means}
+# extra noisey (smaller bins)
+p1 <- ggplot(aes(x = age_with_months,
+           y = friend_count_mean),
+       data = subset(pf.fc_by_age_months, pf.fc_by_age_months$age < 71)) +
+  geom_line() +
+  geom_smooth()
 
+# original
+p2 <- ggplot(aes(x = age,
+                 y = friend_count_mean),
+       data = subset(pf.fc_by_age, pf.fc_by_age$age < 71)) +
+  geom_line()+
+  geom_smooth()
+
+# extra smooth (wider bins - rounded to nearest 5)
+p3 <- ggplot(aes(x = round(age / 5) * 5,
+                 y = friend_count),
+       data = subset(pf, age < 71)) +
+  geom_line(stat = 'summary', fun.y = mean)
+
+library(gridExtra)
+grid.arrange(p2, p1, p3, ncol=1)
 ```
 
 ***
